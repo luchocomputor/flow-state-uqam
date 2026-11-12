@@ -5,6 +5,7 @@ segments, so it can be cached before cross-validation without leakage.
 """
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass
 
 import numpy as np
@@ -20,7 +21,7 @@ BANDS = {"delta": (1, 4), "theta": (4, 8), "alpha": (8, 13), "beta": (13, 29), "
 
 
 def wigner_ville(mode: np.ndarray, sfreq: float, n_times: int = 64,
-                 fmin: float = 1.0, fmax: float = 40.0):
+                 fmin: float = 1.0, fmax: float = 40.0) -> tuple[np.ndarray, np.ndarray]:
     """Discrete Wigner-Ville distribution of one mode, averaged over channels.
 
     mode : (n_channels, n_samples). Returns (W (n_times, n_freqs), freqs): the
@@ -36,10 +37,13 @@ def wigner_ville(mode: np.ndarray, sfreq: float, n_times: int = 64,
     The kernel z[n+tau] z*[n-tau] oscillates at 2f, so frequency m*fs/N is read
     at bin 2m of the full FFT.
     """
+    mode = np.asarray(mode)
+    if mode.ndim != 2:
+        raise ValueError(f"mode must have shape (n_channels, n_samples), got {mode.shape}")
     C, N = mode.shape
     z = hilbert(mode, axis=1)
     fr = np.fft.rfftfreq(N, d=1.0 / sfreq)
-    keep = (fr >= fmin) & (fr <= fmax)
+    keep = (fr >= fmin) & (fr <= fmax) & (fr < sfreq / 2)  # bin 2m of the Nyquist frequency would wrap to 0
     W = np.zeros((n_times, int(keep.sum())), dtype=np.float32)
     for i, n in enumerate(np.round(np.linspace(0, N - 1, n_times)).astype(int)):
         tm = min(n, N - 1 - n)
@@ -54,7 +58,8 @@ def wigner_ville(mode: np.ndarray, sfreq: float, n_times: int = 64,
     return W, fr[keep]
 
 
-def band_energies(imfs: np.ndarray, sfreq: float, bands=BANDS) -> np.ndarray:
+def band_energies(imfs: np.ndarray, sfreq: float,
+                  bands: dict[str, tuple[float, float]] = BANDS) -> np.ndarray:
     """Mean of the Wigner-Ville distribution of each mode in each band: (n_imfs * n_bands,).
 
     The mean runs over all time rows and over the frequency bins of the band,
@@ -102,10 +107,22 @@ def extract(X: np.ndarray, sfreq: float, n_imfs: int = 6, n_dirs: int = 32,
     the segment) before MEMD, so the features do not depend on the amplitude of
     a channel. A segment gives the same features alone or in a batch.
     """
+    X = np.asarray(X)
+    if X.ndim != 3 or len(X) == 0:
+        raise ValueError(f"X must have shape (n_segments, n_channels, n_times), got {X.shape}")
+    finite = np.isfinite(X).all(axis=(1, 2))
+    if not finite.all():
+        raise ValueError(f"X contains NaN or infinite values in segments {np.flatnonzero(~finite)[:10].tolist()}")
     res = Parallel(n_jobs=n_jobs)(delayed(_one)(seg, sfreq, n_imfs, n_dirs) for seg in X)
     wvd = np.stack([r[0] for r in res])
     covs = np.stack([r[1] for r in res])
     C = covs.shape[-1]
+    traces = np.trace(covs, axis1=-2, axis2=-1)
     # small ridge scaled by each matrix's own trace: keeps it SPD and uses no other segment
-    covs += reg * np.trace(covs, axis1=-2, axis2=-1)[..., None, None] / C * np.eye(C)
+    covs += reg * traces[..., None, None] / C * np.eye(C)
+    empty = np.flatnonzero((traces <= 0).any(axis=1))
+    if empty.size:
+        warnings.warn(f"{empty.size} segment(s) have fewer than {n_imfs} non-zero modes (first ones: "
+                      f"{empty[:10].tolist()}): their zero covariance matrices are not positive definite. "
+                      "Drop these segments (flat or too short) or lower n_imfs.", RuntimeWarning, stacklevel=2)
     return Features(wvd=wvd, covs=covs)

@@ -116,6 +116,13 @@ def memd(x: np.ndarray, n_imfs: int = 6, n_dirs: int = 32, max_sift: int = 15,
         or very short input), what remains is returned as the current mode and
         the following ones are zero.
     """
+    x = np.asarray(x)
+    if x.ndim != 2:
+        raise ValueError(f"x must have shape (n_channels, n_times), got {x.shape}")
+    if n_imfs < 1 or n_dirs < 1:
+        raise ValueError(f"n_imfs and n_dirs must be at least 1, got {n_imfs} and {n_dirs}")
+    if not np.isfinite(x).all():
+        raise ValueError("x contains NaN or infinite values")
     C, T = x.shape
     t = np.arange(T, dtype=float)
     rng = np.random.default_rng(seed)

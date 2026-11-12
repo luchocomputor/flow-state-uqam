@@ -18,6 +18,7 @@ def zscore_within(X: np.ndarray, groups: np.ndarray) -> np.ndarray:
 
     Columns that are constant within a group are only centred.
     """
+    groups = np.asarray(groups)
     out = np.empty_like(X, dtype=np.float64)
     for g in np.unique(groups):
         m = groups == g
@@ -37,6 +38,8 @@ class FusedClassifier:
     """
 
     def __init__(self, use: str = "fused", C: float = 1.0):
+        if use not in ("fused", "wvd", "riemann"):
+            raise ValueError(f"use must be 'fused', 'wvd' or 'riemann', got {use!r}")
         self.use, self.C = use, C
 
     def _vectors(self, f: Features) -> np.ndarray:
@@ -48,7 +51,7 @@ class FusedClassifier:
                 [ts.transform(f.covs[:, k]) for k, ts in enumerate(self.ts_)], axis=1))
         return np.concatenate(parts, axis=1)
 
-    def fit(self, f: Features, y: np.ndarray, groups: np.ndarray):
+    def fit(self, f: Features, y: np.ndarray, groups: np.ndarray) -> FusedClassifier:
         self.ts_ = []
         if self.use in ("fused", "riemann"):
             self.ts_ = [TangentSpace(metric="riemann").fit(f.covs[:, k]) for k in range(f.covs.shape[1])]
