@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the paper below."
+title: "flow-state-uqam: EEG decoding of in-game attentional engagement"
+type: software
+authors:
+  - family-names: Almairac
+    given-names: Louis
+repository-code: "https://github.com/luchocomputor/flow-state-uqam"
+license: MIT
+version: 0.1.0
+keywords:
+  - EEG
+  - multivariate empirical mode decomposition
+  - Wigner-Ville distribution
+  - Riemannian geometry
+preferred-citation:
+  type: unpublished
+  title: "EEG Decoding of In-Game Attentional Engagement"
+  authors:
+    - family-names: Almairac
+      given-names: Louis
+    - family-names: Boukadoum
+      given-names: Mounir
+  year: 2026
+  notes: "Submitted to the IEEE International Symposium on Circuits and Systems (ISCAS) 2027."
