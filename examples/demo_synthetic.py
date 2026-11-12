@@ -1,6 +1,8 @@
 """End-to-end run on synthetic EEG: features, leave-one-subject-out, permutation test.
 
     python examples/demo_synthetic.py
+
+Uses 16 MEMD directions and 50 permutations to stay short (the defaults are 32 and 200).
 """
 import time
 
