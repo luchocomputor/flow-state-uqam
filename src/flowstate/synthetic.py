@@ -8,9 +8,11 @@ def make_dataset(n_subjects: int = 6, n_per_class: int = 20, n_channels: int = 8
                  sfreq: float = 125.0, duration: float = 4.0, effect: float = 0.6, seed: int = 0):
     """Two-class EEG-like segments with subject-specific mixing.
 
-    Each segment mixes a few latent rhythms (theta, alpha, beta) and 1/f noise
-    through a mixing matrix drawn per subject. Class 1 has more theta and a
-    stronger alpha source; `effect` sets how strong that difference is.
+    Each segment mixes three latent rhythms (theta near 6 Hz, alpha near 10 Hz,
+    beta near 20 Hz) through a mixing matrix drawn once per subject, then adds
+    a random walk and white noise on each channel. In class 1 the theta and
+    alpha amplitudes are multiplied by 1 + effect and 1 + 0.6 * effect; with
+    effect = 0 the label carries no information.
 
     Returns X (n_segments, n_channels, n_times), y, groups.
     """

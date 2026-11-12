@@ -5,7 +5,14 @@ the extrema of the projection give the instants where the multichannel upper
 and lower envelopes are interpolated (cubic splines, mirror extension at the
 edges as in Rilling et al., 2003). Their mean, averaged over directions, is the
 local mean removed at each sifting step. All channels are sifted together, so
-mode k has the same oscillatory scale on every channel.
+mode k is meant to capture the same oscillatory scale on every channel.
+
+Two choices differ from the reference implementation. The directions are
+normalised Gaussian draws (uniform on the sphere) with a fixed seed, not a
+Hammersley sequence. Sifting of a mode stops when the normalised squared
+difference between two iterations (Huang et al., 1998), computed over all
+channels, falls below a threshold, or after a fixed number of iterations; the
+reference implementation uses the envelope-based criterion of Rilling et al.
 """
 from __future__ import annotations
 
@@ -96,10 +103,18 @@ def memd(x: np.ndarray, n_imfs: int = 6, n_dirs: int = 32, max_sift: int = 15,
     x : array (n_channels, n_times)
     n_imfs : number of modes returned; the last one is the residue (slowest).
     n_dirs : number of projection directions on the sphere.
+    max_sift : maximum number of sifting iterations per mode.
+    sd_thr : sifting of a mode stops once
+        sum((h_prev - h) ** 2) / sum(h_prev ** 2) < sd_thr, summed over channels.
+    seed : seed of the directions. They depend only on (seed, n_dirs, n_channels),
+        so every call with the same arguments uses the same directions.
 
     Returns
     -------
-    imfs : array (n_imfs, n_channels, n_times), from fastest to slowest.
+    imfs : array (n_imfs, n_channels, n_times), from fastest to slowest. They sum
+        to x. If no direction has enough extrema left to sift (constant, monotonic
+        or very short input), what remains is returned as the current mode and
+        the following ones are zero.
     """
     C, T = x.shape
     t = np.arange(T, dtype=float)

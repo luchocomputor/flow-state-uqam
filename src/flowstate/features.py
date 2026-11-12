@@ -14,14 +14,25 @@ from sklearn.covariance import ledoit_wolf
 
 from .memd import memd
 
+# Band edges in Hz, both inclusive: a frequency bin on a shared edge (4, 8, 13 Hz)
+# counts in both bands, and no bin between 29 and 31 Hz is used.
 BANDS = {"delta": (1, 4), "theta": (4, 8), "alpha": (8, 13), "beta": (13, 29), "gamma": (31, 40)}
 
 
 def wigner_ville(mode: np.ndarray, sfreq: float, n_times: int = 64,
                  fmin: float = 1.0, fmax: float = 40.0):
-    """Pseudo Wigner-Ville distribution of one mode, averaged over channels.
+    """Discrete Wigner-Ville distribution of one mode, averaged over channels.
 
-    mode : (n_channels, n_samples). Returns (power (n_times, n_freqs), freqs).
+    mode : (n_channels, n_samples). Returns (W (n_times, n_freqs), freqs): the
+    distribution of the analytic signal at n_times instants evenly spaced over
+    the segment, on the FFT bins between fmin and fmax.
+
+    No smoothing window is applied, in lag or in time. At instant n the lags
+    run up to min(n, N - 1 - n), the distance to the nearest edge, so the
+    frequency resolution is best at the centre of the segment and the first and
+    last rows, which would only have the zero lag, are left at zero. W is
+    signed: cross-terms take negative values.
+
     The kernel z[n+tau] z*[n-tau] oscillates at 2f, so frequency m*fs/N is read
     at bin 2m of the full FFT.
     """
@@ -44,7 +55,12 @@ def wigner_ville(mode: np.ndarray, sfreq: float, n_times: int = 64,
 
 
 def band_energies(imfs: np.ndarray, sfreq: float, bands=BANDS) -> np.ndarray:
-    """Mean WVD energy of each mode in each band: (n_imfs * n_bands,)."""
+    """Mean of the Wigner-Ville distribution of each mode in each band: (n_imfs * n_bands,).
+
+    The mean runs over all time rows and over the frequency bins of the band,
+    edges included. Since the distribution is signed, some of these "energies"
+    are negative; they are kept as they are. A band without any bin gives 0.
+    """
     out = []
     for mode in imfs:
         W, freqs = wigner_ville(mode, sfreq)
@@ -55,7 +71,7 @@ def band_energies(imfs: np.ndarray, sfreq: float, bands=BANDS) -> np.ndarray:
 
 
 def mode_covariances(imfs: np.ndarray) -> np.ndarray:
-    """Ledoit-Wolf covariance of each mode across channels: (n_imfs, C, C)."""
+    """Ledoit-Wolf covariance between the channels of each mode: (n_imfs, C, C)."""
     return np.stack([ledoit_wolf(mode.T)[0] for mode in imfs])
 
 
@@ -67,6 +83,7 @@ class Features:
 
 
 def _one(segment, sfreq, n_imfs, n_dirs):
+    # each channel is standardised over the segment (flat channels are only centred)
     mu = segment.mean(axis=1, keepdims=True)
     sd = segment.std(axis=1, keepdims=True)
     imfs = memd((segment - mu) / np.where(sd < 1e-8, 1.0, sd), n_imfs=n_imfs, n_dirs=n_dirs)
@@ -78,6 +95,12 @@ def extract(X: np.ndarray, sfreq: float, n_imfs: int = 6, n_dirs: int = 32,
     """MEMD, WVD band energies and per-mode covariances for every segment.
 
     X : (n_segments, n_channels, n_times), already filtered (e.g. 0.1-40 Hz).
+    n_imfs, n_dirs : passed to `memd`; the last mode is the residue.
+    reg : ridge added to each covariance, as a fraction of its mean eigenvalue.
+
+    Each channel of each segment is standardised (zero mean, unit variance over
+    the segment) before MEMD, so the features do not depend on the amplitude of
+    a channel. A segment gives the same features alone or in a batch.
     """
     res = Parallel(n_jobs=n_jobs)(delayed(_one)(seg, sfreq, n_imfs, n_dirs) for seg in X)
     wvd = np.stack([r[0] for r in res])

@@ -14,6 +14,10 @@ from .features import Features
 
 
 def zscore_within(X: np.ndarray, groups: np.ndarray) -> np.ndarray:
+    """Centre and scale each column within each group, with that group's own statistics.
+
+    Columns that are constant within a group are only centred.
+    """
     out = np.empty_like(X, dtype=np.float64)
     for g in np.unique(groups):
         m = groups == g
@@ -23,7 +27,14 @@ def zscore_within(X: np.ndarray, groups: np.ndarray) -> np.ndarray:
 
 
 class FusedClassifier:
-    """use: 'fused' (default), 'wvd' or 'riemann'."""
+    """RBF SVM on per-subject z-scored features.
+
+    use : 'fused' (default), 'wvd' or 'riemann'.
+    C : SVM regularisation parameter.
+
+    `predict` z-scores the segments it receives within each subject, so it
+    needs all the segments of a subject at once, not one segment at a time.
+    """
 
     def __init__(self, use: str = "fused", C: float = 1.0):
         self.use, self.C = use, C

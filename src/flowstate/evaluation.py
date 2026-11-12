@@ -15,6 +15,8 @@ def _subset(f: Features, idx) -> Features:
 def loso(make_model, f: Features, y: np.ndarray, groups: np.ndarray) -> dict:
     """Train on all subjects but one, test on the held-out one, for every subject.
 
+    A subject whose segments all have the same label is not used as a test
+    subject; it still serves for training.
     Returns the macro-F1 pooled over all folds and the per-subject scores.
     """
     y_true, y_pred, per_subject = [], [], {}
