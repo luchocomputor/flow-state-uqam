@@ -5,6 +5,7 @@ from typing import Callable
 
 import numpy as np
 from joblib import Parallel, delayed
+from sklearn.base import clone
 from sklearn.metrics import f1_score
 
 from .features import Features
@@ -47,6 +48,15 @@ def loso(make_model: Callable[[], FusedClassifier], f: Features, y: np.ndarray, 
             "per_subject": per_subject}
 
 
+def _refit_svm(folds: list, y: np.ndarray) -> float:
+    """Pooled macro-F1 with the SVM of each fold refitted on the labels y."""
+    y_true, y_pred = [], []
+    for tr, te, X_tr, X_te, svm in folds:
+        y_true.extend(y[te])
+        y_pred.extend(clone(svm).fit(X_tr, y[tr]).predict(X_te))
+    return f1_score(y_true, y_pred, average="macro", zero_division=0)
+
+
 def permutation_test(make_model: Callable[[], FusedClassifier], f: Features, y: np.ndarray,
                      groups: np.ndarray, n_permutations: int = 200, seed: int = 0, n_jobs: int = -1) -> dict:
     """Null distribution of the LOSO F1 with labels shuffled within each subject.
@@ -54,10 +64,22 @@ def permutation_test(make_model: Callable[[], FusedClassifier], f: Features, y: 
     Shuffling inside subjects keeps each subject's class balance, so the null
     only removes the link between the signal and the label.
     p = (1 + #{null >= observed}) / (n_permutations + 1).
+
+    Each null score equals `loso` run on the shuffled labels. The tangent
+    spaces and the per-subject z-scoring use no labels, so the feature matrices
+    of each fold are computed once and only the SVM is refitted.
     """
     y, groups = _check(f, y, groups)
     rng = np.random.default_rng(seed)
     observed = loso(make_model, f, y, groups)["f1"]
+    folds = []
+    for g in np.unique(groups):
+        te, tr = groups == g, groups != g
+        if len(np.unique(y[te])) < 2 or len(np.unique(y[tr])) < 2:
+            continue
+        model = make_model().fit(_subset(f, tr), y[tr], groups[tr])
+        folds.append((tr, te, model.transform(_subset(f, tr), groups[tr]),
+                      model.transform(_subset(f, te), groups[te]), clone(model.svm_)))
     perms = []
     for _ in range(n_permutations):
         yp = y.copy()
@@ -65,5 +87,5 @@ def permutation_test(make_model: Callable[[], FusedClassifier], f: Features, y: 
             m = np.flatnonzero(groups == g)
             yp[m] = rng.permutation(y[m])
         perms.append(yp)
-    null = np.array(Parallel(n_jobs=n_jobs)(delayed(lambda yy: loso(make_model, f, yy, groups)["f1"])(yy) for yy in perms))
+    null = np.array(Parallel(n_jobs=n_jobs)(delayed(_refit_svm)(folds, yy) for yy in perms))
     return {"f1": observed, "null": null, "p_value": (1 + np.sum(null >= observed)) / (n_permutations + 1)}

@@ -55,9 +55,13 @@ class FusedClassifier:
         self.ts_ = []
         if self.use in ("fused", "riemann"):
             self.ts_ = [TangentSpace(metric="riemann").fit(f.covs[:, k]) for k in range(f.covs.shape[1])]
-        X = zscore_within(self._vectors(f), groups)
-        self.svm_ = SVC(kernel="rbf", C=self.C, gamma="scale", class_weight="balanced").fit(X, y)
+        svm = SVC(kernel="rbf", C=self.C, gamma="scale", class_weight="balanced")
+        self.svm_ = svm.fit(self.transform(f, groups), y)
         return self
 
+    def transform(self, f: Features, groups: np.ndarray) -> np.ndarray:
+        """Feature vectors given to the SVM, z-scored within each subject. Uses no labels."""
+        return zscore_within(self._vectors(f), groups)
+
     def predict(self, f: Features, groups: np.ndarray) -> np.ndarray:
-        return self.svm_.predict(zscore_within(self._vectors(f), groups))
+        return self.svm_.predict(self.transform(f, groups))
