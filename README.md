@@ -65,6 +65,29 @@ print(perm["p_value"])
 
 `groups` holds the subject of each segment. `FusedClassifier(use="wvd")` and `use="riemann"` run each branch alone.
 
+## Notebook
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/luchocomputor/flow-state-uqam/blob/main/notebooks/demo.ipynb)
+
+[`notebooks/demo.ipynb`](notebooks/demo.ipynb) shows what each step does on synthetic data: the modes, the Wigner-Ville map, the tangent space before and after per-subject z-scoring, the leave-one-subject-out scores and the permutation test. It runs in under two minutes on a laptop.
+
+```bash
+pip install -e ".[notebook]"
+jupyter lab notebooks/demo.ipynb
+```
+
+<p align="center">
+<img width="720" alt="MEMD modes of one synthetic segment on three channels, with the amplitude spectrum of each mode" src="assets/demo-memd-modes.png">
+</p>
+
+MEMD of one synthetic segment: within a row, the three channels share the same spectral peaks.
+
+<p align="center">
+<img width="560" alt="PCA of the tangent vectors of mode 3, coloured by subject and by class, before and after per-subject z-scoring" src="assets/demo-tangent-space.png">
+</p>
+
+Tangent vectors of mode 3 (PCA, synthetic data): one cluster per subject before per-subject z-scoring (left), classes separated after (right).
+
 ## Tests
 
 ```bash
