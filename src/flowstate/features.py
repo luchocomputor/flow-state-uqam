@@ -83,6 +83,6 @@ def extract(X: np.ndarray, sfreq: float, n_imfs: int = 6, n_dirs: int = 32,
     wvd = np.stack([r[0] for r in res])
     covs = np.stack([r[1] for r in res])
     C = covs.shape[-1]
-    for k in range(covs.shape[1]):  # small ridge, keeps every matrix SPD
-        covs[:, k] += reg * np.trace(covs[:, k].mean(0)) / C * np.eye(C)
+    # small ridge scaled by each matrix's own trace: keeps it SPD and uses no other segment
+    covs += reg * np.trace(covs, axis1=-2, axis2=-1)[..., None, None] / C * np.eye(C)
     return Features(wvd=wvd, covs=covs)

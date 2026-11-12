@@ -73,3 +73,7 @@ pytest
 ```
 
 The tests check that the modes add up to the signal, that MEMD puts the fast oscillation in the first mode, that the Wigner-Ville frequency axis is right, and that the pipeline beats chance on synthetic data.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
