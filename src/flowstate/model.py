@@ -2,7 +2,9 @@
 
 The reference point of each tangent space is learned on the training subjects
 only. Features are then z-scored within each subject, test subject included,
-with its own statistics (unsupervised, no labels used).
+with its own statistics (unsupervised, no labels used). The per-subject
+recentring of the covariance matrices described in the paper is not part of
+this class.
 """
 from __future__ import annotations
 

@@ -33,6 +33,7 @@ Not in the repository:
 - The recordings and the labels. They belong to the Ubisoft La Forge study and are not public, so the result above cannot be reproduced from this repository. The scores printed by the demo and the notebook describe synthetic data and say nothing about real EEG.
 - The steps before the features: filtering, segmentation and labelling of the recordings.
 - The EEG-Conformer baseline and the control analyses.
+- The per-subject recentring of the covariance matrices that the paper applies before the tangent-space projection. Here the tangent vectors are z-scored within each subject, without that step.
 
 ## The method
 
