@@ -98,7 +98,7 @@ jupyter lab notebooks/demo.ipynb
 <img width="720" alt="MEMD modes of one synthetic segment on three channels, with the amplitude spectrum of each mode" src="assets/demo-memd-modes.png">
 </p>
 
-MEMD of one synthetic segment: within a row, the three channels share the same spectral peaks.
+MEMD of one synthetic segment. The label on the right is the peak of the spectrum averaged over the 8 channels. Within a row the channels have peaks at the same frequencies, but not always the same dominant one: theta (6 Hz) and alpha (10 Hz) are less than an octave apart, and MEMD does not fully separate them here.
 
 <p align="center">
 <img width="560" alt="PCA of the tangent vectors of mode 3, coloured by subject and by class, before and after per-subject z-scoring" src="assets/demo-tangent-space.png">
